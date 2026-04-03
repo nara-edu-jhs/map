@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投稿マップ</title>
+
+  <!-- Leaflet のCSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <!-- Leaflet のJavaScript -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .popup-content {
+      width: 220px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .popup-content h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+    }
+
+    .popup-content p {
+      margin: 0 0 8px 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .popup-content img {
+      width: 200px;
+      max-width: 100%;
+      border-radius: 8px;
+      display: block;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <script>
+    // ① ここにGASのURLを貼ってください
+    const apiURL = "https://script.google.com/a/macros/e-net.nara.jp/s/AKfycbygLsVh8W8ArklCHF70u-fXHhjR4lFycXm3Q35mkmkRn7TkABWwKZS2G14q1hUrB34g/exec";
+
+    // ② 地図の初期位置（奈良教育大学附属中学校付近）
+    const map = L.map('map').setView([34.6965, 135.8166], 14);
+
+    // ③ 地図タイルを表示（無料）
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // ④ GASからデータを取得
+    fetch(apiURL)
+      .then(response => response.json())
+      .then(data => {
+        data.forEach(item => {
+
+          // 緯度・経度が正しくない行はスキップ
+          if (isNaN(item.lat) || isNaN(item.lng)) return;
+
+          // ポップアップの中身
+          const content = `
+            <div class="popup-content">
+              <h3>${item.grade}年 ${item.className}組 ${item.number}番</h3>
+              <p>${item.comment || ""}</p>
+              ${item.image ? `<img src="${item.image}" alt="投稿画像">` : ""}
+            </div>
+          `;
+
+          // マーカーを追加
+          L.marker([item.lat, item.lng])
+            .addTo(map)
+            .bindPopup(content);
+        });
+      })
+      .catch(error => {
+        console.error("データの取得に失敗しました:", error);
+        alert("地図データの読み込みに失敗しました。GASのURLや公開設定を確認してください。");
+      });
+  </script>
+
+</body>
+</html>
