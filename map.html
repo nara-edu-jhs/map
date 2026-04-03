@@ -1,99 +1,128 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>投稿マップ</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投稿マップ</title>
 
-  <!-- Leaflet のCSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Leaflet のJavaScript -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
+html, body { height:100%; margin:0; }
+#map { height:100%; }
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
+.popup {
+  width:220px;
+  font-size:14px;
+}
 
-    #map {
-      height: 100%;
-      width: 100%;
-    }
+.popup input, .popup textarea {
+  width:100%;
+  margin-bottom:5px;
+}
 
-    .popup-content {
-      width: 220px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .popup-content h3 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-    }
-
-    .popup-content p {
-      margin: 0 0 8px 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .popup-content img {
-      width: 200px;
-      max-width: 100%;
-      border-radius: 8px;
-      display: block;
-      margin-top: 8px;
-    }
-  </style>
+.popup img {
+  width:200px;
+  border-radius:8px;
+}
+</style>
 </head>
+
 <body>
 
-  <div id="map"></div>
+<div id="map"></div>
 
-  <script>
-    // ① ここにGASのURLを貼ってください
-    const apiURL = "https://script.google.com/a/macros/e-net.nara.jp/s/AKfycbygLsVh8W8ArklCHF70u-fXHhjR4lFycXm3Q35mkmkRn7TkABWwKZS2G14q1hUrB34g/exec";
+<script>
 
-    // ② 地図の初期位置（奈良教育大学附属中学校付近）
-    const map = L.map('map').setView([34.6965, 135.8166], 14);
+// ★GASのURLを入れる
+const apiURL = "https://script.google.com/a/macros/e-net.nara.jp/s/AKfycbz0oZiBtHbz8ad4WbOHAK-ogpAnNNbf5Jyp8w8WYy4jYo3z-zwgerDo3-BghaQv86Ko/exec";
 
-    // ③ 地図タイルを表示（無料）
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+const map = L.map('map').setView([34.6965, 135.8166], 14);
 
-    // ④ GASからデータを取得
-    fetch(apiURL)
-      .then(response => response.json())
-      .then(data => {
-        data.forEach(item => {
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
 
-          // 緯度・経度が正しくない行はスキップ
-          if (isNaN(item.lat) || isNaN(item.lng)) return;
+// ▼ 既存データ表示
+function loadData(){
 
-          // ポップアップの中身
-          const content = `
-            <div class="popup-content">
-              <h3>${item.grade}年 ${item.className}組 ${item.number}番</h3>
-              <p>${item.comment || ""}</p>
-              ${item.image ? `<img src="${item.image}" alt="投稿画像">` : ""}
-            </div>
-          `;
+  fetch(apiURL)
+    .then(res => res.json())
+    .then(data => {
 
-          // マーカーを追加
-          L.marker([item.lat, item.lng])
-            .addTo(map)
-            .bindPopup(content);
-        });
-      })
-      .catch(error => {
-        console.error("データの取得に失敗しました:", error);
-        alert("地図データの読み込みに失敗しました。GASのURLや公開設定を確認してください。");
+      data.forEach(item => {
+
+        if (isNaN(item.lat) || isNaN(item.lng)) return;
+
+        const content = `
+          <div class="popup">
+            <b>${item.name}</b><br>
+            ${item.comment || ""}<br>
+            ${item.image ? `<img src="${item.image}">` : ""}
+          </div>
+        `;
+
+        L.marker([item.lat, item.lng])
+          .addTo(map)
+          .bindPopup(content);
+
       });
-  </script>
+
+    });
+
+}
+
+loadData();
+
+
+// ▼ 地図クリックで入力
+map.on('click', function(e){
+
+  const lat = e.latlng.lat;
+  const lng = e.latlng.lng;
+
+  const form = `
+    <div class="popup">
+      名前:<br>
+      <input id="name"><br>
+      コメント:<br>
+      <textarea id="comment"></textarea><br>
+      画像URL:<br>
+      <input id="image"><br>
+      <button onclick="sendData(${lat}, ${lng})">送信</button>
+    </div>
+  `;
+
+  L.popup()
+    .setLatLng(e.latlng)
+    .setContent(form)
+    .openOn(map);
+
+});
+
+
+// ▼ 送信処理
+function sendData(lat, lng){
+
+  const name = document.getElementById("name").value;
+  const comment = document.getElementById("comment").value;
+  const image = document.getElementById("image").value;
+
+  fetch(apiURL, {
+    method: "POST",
+    body: JSON.stringify({
+      name, comment, image, lat, lng
+    })
+  })
+  .then(() => {
+    alert("投稿しました！");
+    location.reload();
+  });
+
+}
+
+</script>
 
 </body>
 </html>
