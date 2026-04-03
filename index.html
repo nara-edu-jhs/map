@@ -12,17 +12,12 @@
 html, body { height:100%; margin:0; }
 #map { height:100%; }
 
-.popup {
+.popup-content {
   width:220px;
   font-size:14px;
 }
 
-.popup input, .popup textarea {
-  width:100%;
-  margin-bottom:5px;
-}
-
-.popup img {
+.popup-content img {
   width:200px;
   border-radius:8px;
 }
@@ -35,92 +30,41 @@ html, body { height:100%; margin:0; }
 
 <script>
 
-// ★GASのURLを入れる
-const apiURL = "https://script.google.com/a/macros/e-net.nara.jp/s/AKfycbz0oZiBtHbz8ad4WbOHAK-ogpAnNNbf5Jyp8w8WYy4jYo3z-zwgerDo3-BghaQv86Ko/exec";
+// ★ここにGASのURLを貼る
+const apiURL = "https://script.google.com/a/macros/e-net.nara.jp/s/AKfycby78qyH9wB4daBLqpyRZCgtnFlp3cNsAoRbeXrhcQw4GeKWqyFmu0OzGLP7PlvR5CHt/exec";
 
+// 地図初期設定
 const map = L.map('map').setView([34.6965, 135.8166], 14);
 
+// 地図タイル
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// ▼ 既存データ表示
-function loadData(){
+// データ取得して表示
+fetch(apiURL)
+  .then(res => res.json())
+  .then(data => {
 
-  fetch(apiURL)
-    .then(res => res.json())
-    .then(data => {
+    data.forEach(item => {
 
-      data.forEach(item => {
+      if (isNaN(item.lat) || isNaN(item.lng)) return;
 
-        if (isNaN(item.lat) || isNaN(item.lng)) return;
+      const content = `
+        <div class="popup-content">
+          <b>${item.grade}年 ${item.className}組 ${item.number}番</b><br>
+          ${item.comment || ""}<br>
+          ${item.image ? `<img src="${item.image}">` : ""}
+        </div>
+      `;
 
-        const content = `
-          <div class="popup">
-            <b>${item.name}</b><br>
-            ${item.comment || ""}<br>
-            ${item.image ? `<img src="${item.image}">` : ""}
-          </div>
-        `;
-
-        L.marker([item.lat, item.lng])
-          .addTo(map)
-          .bindPopup(content);
-
-      });
+      L.marker([item.lat, item.lng])
+        .addTo(map)
+        .bindPopup(content);
 
     });
 
-}
-
-loadData();
-
-
-// ▼ 地図クリックで入力
-map.on('click', function(e){
-
-  const lat = e.latlng.lat;
-  const lng = e.latlng.lng;
-
-  const form = `
-    <div class="popup">
-      名前:<br>
-      <input id="name"><br>
-      コメント:<br>
-      <textarea id="comment"></textarea><br>
-      画像URL:<br>
-      <input id="image"><br>
-      <button onclick="sendData(${lat}, ${lng})">送信</button>
-    </div>
-  `;
-
-  L.popup()
-    .setLatLng(e.latlng)
-    .setContent(form)
-    .openOn(map);
-
-});
-
-
-// ▼ 送信処理
-function sendData(lat, lng){
-
-  const name = document.getElementById("name").value;
-  const comment = document.getElementById("comment").value;
-  const image = document.getElementById("image").value;
-
-  fetch(apiURL, {
-    method: "POST",
-    body: JSON.stringify({
-      name, comment, image, lat, lng
-    })
-  })
-  .then(() => {
-    alert("投稿しました！");
-    location.reload();
   });
-
-}
 
 </script>
 
